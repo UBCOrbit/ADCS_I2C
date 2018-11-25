@@ -1,0 +1,3 @@
+[submodule "generated_launchpad"]
+	path = generated_launchpad
+	url = git@github.com:UBCOrbit/ADCS_HalCoGen_launchpad.git
