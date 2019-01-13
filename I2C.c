@@ -6,6 +6,21 @@
  */
 
 #include "I2C.h"
+void I2C_init(i2cBASE_t *i) 
+{
+    if(I2C_initialized)
+        return;
+
+    // TODO: Figure out if mutex can be instantiated with a 
+    // static member function instead
+    if(I2CMutex == NULL) {
+        I2CMutex = xSemaphoreCreateMutex();
+    }
+
+    i2c = i;
+    I2C_num_resets = 0;
+    I2C_initialized = true;
+}
 
 int16_t I2C_send(uint32_t length, uint8_t *data, uint32_t addr)
 {
@@ -214,17 +229,6 @@ int16_t I2C_reset()
     return I2C_OK;
 }
 
-void I2CInit(i2cBASE_t *i) 
-{
-    // TODO: Figure out if mutex can be instantiated with a 
-    // static member function instead
-    if(I2CMutex == NULL) {
-        I2CMutex = xSemaphoreCreateMutex();
-    }
-
-    i2c = i;
-    I2C_num_resets = 0;
-}
 
 bool I2C_get_mutex()
 {

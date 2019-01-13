@@ -25,7 +25,7 @@
 #define I2C_MUTEX_FAIL      -30033
 #define I2C_OK              1
 
-void I2CInit(i2cBASE_t *i2c);
+void I2C_init(i2cBASE_t *i2c);
 
 int16_t I2C_send(uint32_t length, uint8_t *data, uint32_t addr);
 static int16_t _I2C_send(uint32_t length, uint8_t *data);
@@ -42,5 +42,6 @@ static i2cBASE_t *i2c;
 
 static uint8_t I2C_num_resets;
 static xSemaphoreHandle I2CMutex;
+static bool I2C_initialized = false;
 
 #endif /* I2C_HPP_ */
