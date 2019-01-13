@@ -224,7 +224,7 @@ int16_t I2C_reset()
         while(1);
     }
 
-    I2CInit(i2c);
+    I2C_init(i2c);
     xTaskResumeAll();
     return I2C_OK;
 }
