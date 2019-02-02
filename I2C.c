@@ -157,6 +157,10 @@ int16_t I2C_receive(uint32_t clength,
     i2cSetCount(I2C_i2c, dlength);
     i2cSetMode(I2C_i2c, I2C_MASTER);
     err = _I2C_receive(dlength, data);
+    if(err != I2C_OK) {
+        xSemaphoreGive(I2CMutex);
+        return err;
+    }
 
     for(i=0; i<dlength; i++){
         sprintf(hex_buffer, "%02x", data[i]);
