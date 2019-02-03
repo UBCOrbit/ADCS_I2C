@@ -133,7 +133,7 @@ int16_t I2C_receive(uint32_t clength,
         }
     }
 
-    sprintf(debug_buffer, "[I2C] Sending: %s to %d\r\n", hex_string_buffer, addr);
+    sprintf(debug_buffer, "[I2C] Sending: %s to %02x\r\n", hex_string_buffer, addr);
 
     sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
 
@@ -169,7 +169,7 @@ int16_t I2C_receive(uint32_t clength,
         }
     }
 
-    sprintf(debug_buffer, "[I2C] Received: %s from %d\r\n", hex_string_buffer, addr);
+    sprintf(debug_buffer, "[I2C] Received: %s from %02x\r\n", hex_string_buffer, addr);
 
     sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
 
