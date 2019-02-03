@@ -38,7 +38,7 @@ int16_t I2C_reset();
 static int16_t I2C_set_slave_addr(uint32_t addr);
 static bool I2C_get_mutex();
 
-static i2cBASE_t *i2c;
+static i2cBASE_t *I2C_i2c;
 
 static uint8_t I2C_num_resets;
 static xSemaphoreHandle I2CMutex;

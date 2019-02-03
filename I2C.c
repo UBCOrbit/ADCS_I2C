@@ -17,24 +17,26 @@ void I2C_init(i2cBASE_t *i)
         I2CMutex = xSemaphoreCreateMutex();
     }
 
-    i2c = i;
+    I2C_i2c = i;
+    i2cInit();
+
     I2C_num_resets = 0;
     I2C_initialized = true;
 }
 
 int16_t I2C_send(uint32_t length, uint8_t *data, uint32_t addr)
 {
-    if(I2C_set_slave_addr(addr) != I2C_OK)
+    if(I2C_set_slave_addr(addr) !=I2C_OK)
         return I2C_MUTEX_FAIL;
 
     int16_t err;
     if(!I2C_get_mutex())
         return I2C_MUTEX_FAIL;
-    i2cSetDirection(i2c, I2C_TRANSMITTER);
-    i2cSetCount(i2c, length);
-    i2cSetMode(i2c, I2C_MASTER);
-    i2cSetStop(i2c);
-    i2cSetStart(i2c);
+    i2cSetDirection(I2C_i2c, I2C_TRANSMITTER);
+    i2cSetCount(I2C_i2c, length);
+    i2cSetMode(I2C_i2c, I2C_MASTER);
+    i2cSetStop(I2C_i2c);
+    i2cSetStart(I2C_i2c);
 
     err = _I2C_send(length, data);
     if(err != I2C_OK) {
@@ -42,8 +44,8 @@ int16_t I2C_send(uint32_t length, uint8_t *data, uint32_t addr)
         return err;
     }
 
-    i2cSetStop(i2c);
-    i2cClearSCD(i2c);
+    i2cSetStop(I2C_i2c);
+    i2cClearSCD(I2C_i2c);
 
     err = I2C_is_bus_busy();
     if(err != I2C_OK) {
@@ -68,7 +70,7 @@ int16_t _I2C_send(uint32_t length, uint8_t *data)
     while(length > 0U){
         // Wait while transmit (I2C_TX_INT) and access 
         // (I2C_ARDY_INT) are not ready
-        while(((i2c->STR & (uint32_t) I2C_TX_INT 
+        while(((I2C_i2c->STR & (uint32_t) I2C_TX_INT 
                         | (uint32_t) I2C_ARDY_INT)
                     == 0U)
                 && timeout < I2C_TIMEOUT_MAX)
@@ -79,13 +81,13 @@ int16_t _I2C_send(uint32_t length, uint8_t *data)
         if(timeout >= I2C_TIMEOUT_MAX)
             return I2C_TIMEOUT_FAIL;
 
-        if(i2c->STR & (uint32_t) I2C_NACK_INT) {
-            i2cSetStop(i2c);
-            i2c->STR = I2C_NACK_INT;
+        if(I2C_i2c->STR & (uint32_t) I2C_NACK_INT) {
+            i2cSetStop(I2C_i2c);
+            I2C_i2c->STR = I2C_NACK_INT;
             return I2C_ERR_NACK;
         }
 
-        i2c->DXR = (uint32_t) (*data);
+        I2C_i2c->DXR = (uint32_t) (*data);
         data++;
         length--;
     }
@@ -101,14 +103,32 @@ int16_t I2C_receive(uint32_t clength,
     if(I2C_set_slave_addr(addr) != I2C_OK)
         return I2C_MUTEX_FAIL;
 
+    char hex_buffer[3];
+    char hex_string_buffer[64];
+    char debug_buffer[64];
+
+    uint32_t i,j;
+
+    for(i=0; i<clength; i++){
+        sprintf(hex_buffer, "%02x", cmd[i]);
+        for(j=0; j<2; j++){
+            sprintf(hex_string_buffer+i*2+j, "%c", hex_buffer[j]);
+        }
+    }
+
+    sprintf(debug_buffer, "[I2C] Sending: %s to %d\r\n", hex_string_buffer, addr);
+
+    sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+
+
     int16_t err;
     if(!I2C_get_mutex())
         return I2C_MUTEX_FAIL;
-    i2cSetDirection(i2c, I2C_TRANSMITTER);
-    i2cSetCount(i2c, clength);
-    i2cSetMode(i2c, I2C_MASTER);
-    i2cSetStop(i2c);
-    i2cSetStart(i2c);
+    i2cSetDirection(I2C_i2c, I2C_TRANSMITTER);
+    i2cSetCount(I2C_i2c, clength);
+    i2cSetMode(I2C_i2c, I2C_MASTER);
+    i2cSetStop(I2C_i2c);
+    i2cSetStart(I2C_i2c);
 
     err = _I2C_send(clength, cmd);
     if(err != I2C_OK) {
@@ -116,16 +136,16 @@ int16_t I2C_receive(uint32_t clength,
         return err;
     }
 
-    i2cSetDirection(i2c, I2C_RECEIVER);
-    i2cSetCount(i2c, dlength);
-    i2cSetMode(i2c, I2C_MASTER);
+    i2cSetDirection(I2C_i2c, I2C_RECEIVER);
+    i2cSetCount(I2C_i2c, dlength);
+    i2cSetMode(I2C_i2c, I2C_MASTER);
     err = _I2C_receive(dlength, data);
     if(err != I2C_OK) {
         xSemaphoreGive(I2CMutex);
         return err;
     }
-    i2cSetStop(i2c);
-    i2cClearSCD(i2c);
+    i2cSetStop(I2C_i2c);
+    i2cClearSCD(I2C_i2c);
 
     err = I2C_is_bus_busy();
     if(err != I2C_OK) {
@@ -149,7 +169,7 @@ int16_t _I2C_receive(uint32_t length, uint8_t *data)
 
     while(length > 0U){
         // Wait while receive (I2C_RX_INT) is not ready
-        while(((i2c->STR & (uint32_t) I2C_RX_INT)
+        while(((I2C_i2c->STR & (uint32_t) I2C_RX_INT)
                     == 0U)
                 && timeout < I2C_TIMEOUT_MAX)
         {
@@ -159,13 +179,13 @@ int16_t _I2C_receive(uint32_t length, uint8_t *data)
         if(timeout >= I2C_TIMEOUT_MAX)
             return I2C_TIMEOUT_FAIL;
 
-        if(i2c->STR & (uint32_t) I2C_NACK_INT) {
-            i2cSetStop(i2c);
-            i2c->STR = I2C_NACK_INT;
+        if(I2C_i2c->STR & (uint32_t) I2C_NACK_INT) {
+            i2cSetStop(I2C_i2c);
+            I2C_i2c->STR = I2C_NACK_INT;
             return I2C_ERR_NACK;
         }
 
-        *data = ((uint8_t) i2c->DRR);
+        *data = ((uint8_t) I2C_i2c->DRR);
         data++;
         length--;
     }
@@ -175,7 +195,7 @@ int16_t _I2C_receive(uint32_t length, uint8_t *data)
 int16_t I2C_is_bus_busy()
 {
     uint32_t timeout = 0;
-    while((i2c->STR & I2C_BUSBUSY) 
+    while((I2C_i2c->STR & I2C_BUSBUSY) 
             && timeout < I2C_TIMEOUT_MAX)
     {
         timeout++;
@@ -188,7 +208,7 @@ int16_t I2C_is_bus_busy()
 int16_t I2C_ok_transmit()
 {
     uint32_t timeout = 0;
-    while((i2c->MDR & I2C_MASTER)
+    while((I2C_i2c->MDR & I2C_MASTER)
             && timeout < I2C_TIMEOUT_MAX)
     {
         timeout++;
@@ -206,25 +226,25 @@ int16_t I2C_reset()
     uint8_t i,j;
     vTaskSuspendAll();
     do {
-        i2c->MDR = (uint32_t)((uint32_t)0U << 5U);
-        i2c->PFNC = (0x01);
-        i2c->DIR = (0x01);
+        I2C_i2c->MDR = (uint32_t)((uint32_t)0U << 5U);
+        I2C_i2c->PFNC = (0x01);
+        I2C_i2c->DIR = (0x01);
 
         for(i = 0; i < 10; i++) {
-            i2c->DOUT = i2c->DOUT | 0x01;
+            I2C_i2c->DOUT = I2C_i2c->DOUT | 0x01;
             for(j=0;j<300;j--);
-            i2c->DOUT ^= i2c->DOUT;
+            I2C_i2c->DOUT ^= I2C_i2c->DOUT;
             for(j=0;j<300;j--);
         }
         I2C_num_resets++;
-    } while(i2c->DIN & 0x02 != 0x02 && I2C_num_resets < I2C_MAX_RESETS);
+    } while(I2C_i2c->DIN & 0x02 != 0x02 && I2C_num_resets < I2C_MAX_RESETS);
 
     if(I2C_num_resets >= 5) {
         xSemaphoreGive(I2CMutex);
         while(1);
     }
 
-    I2C_init(i2c);
+    I2C_init(I2C_i2c);
     xTaskResumeAll();
     return I2C_OK;
 }
@@ -246,7 +266,7 @@ bool I2C_get_mutex()
 int16_t I2C_set_slave_addr(uint32_t addr) {
     if(!I2C_get_mutex())
         return I2C_MUTEX_FAIL;
-    i2cSetSlaveAdd(i2c, addr);
+    i2cSetSlaveAdd(I2C_i2c, addr);
     xSemaphoreGive(I2CMutex);
     return I2C_OK;
 }
