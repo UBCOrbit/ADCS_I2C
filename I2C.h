@@ -8,6 +8,10 @@
 #ifndef I2C_H_
 #define I2C_H_
 
+#include <stdio.h>
+#include <string.h>
+#include "sci.h"
+
 #include "i2c.h"
 #include "FreeRTOS.h"
 #include "os_semphr.h"

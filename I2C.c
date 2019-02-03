@@ -29,6 +29,23 @@ int16_t I2C_send(uint32_t length, uint8_t *data, uint32_t addr)
     if(I2C_set_slave_addr(addr) !=I2C_OK)
         return I2C_MUTEX_FAIL;
 
+    char hex_buffer[3];
+    char hex_string_buffer[64];
+    char debug_buffer[64];
+
+    uint32_t i,j;
+
+    for(i=0; i<length; i++){
+        sprintf(hex_buffer, "%02x", data[i]);
+        for(j=0; j<2; j++){
+            sprintf(hex_string_buffer+i*2+j, "%c", hex_buffer[j]);
+        }
+    }
+
+    sprintf(debug_buffer, "[I2C] Sending: %s to %d\r\n", hex_string_buffer, addr);
+
+    sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+
     int16_t err;
     if(!I2C_get_mutex())
         return I2C_MUTEX_FAIL;
@@ -140,6 +157,18 @@ int16_t I2C_receive(uint32_t clength,
     i2cSetCount(I2C_i2c, dlength);
     i2cSetMode(I2C_i2c, I2C_MASTER);
     err = _I2C_receive(dlength, data);
+
+    for(i=0; i<dlength; i++){
+        sprintf(hex_buffer, "%02x", data[i]);
+        for(j=0; j<2; j++){
+            sprintf(hex_string_buffer+i*2+j, "%c", hex_buffer[j]);
+        }
+    }
+
+    sprintf(debug_buffer, "[I2C] Received: %s from %d\r\n", hex_string_buffer, addr);
+
+    sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+
     if(err != I2C_OK) {
         xSemaphoreGive(I2CMutex);
         return err;
