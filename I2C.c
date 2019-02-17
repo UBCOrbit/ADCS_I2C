@@ -137,30 +137,76 @@ int16_t I2C_receive(uint32_t clength,
 
     sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
 
-
     int16_t err;
-    if(!I2C_get_mutex())
+    if(!I2C_get_mutex()){
+        sprintf(debug_buffer, "[I2C] Error: Couldn't get mutex\r\n");
+
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
         return I2C_MUTEX_FAIL;
+    }
     i2cSetDirection(I2C_i2c, I2C_TRANSMITTER);
     i2cSetCount(I2C_i2c, clength);
     i2cSetMode(I2C_i2c, I2C_MASTER);
     i2cSetStop(I2C_i2c);
     i2cSetStart(I2C_i2c);
-
     err = _I2C_send(clength, cmd);
     if(err != I2C_OK) {
         xSemaphoreGive(I2CMutex);
+        sprintf(debug_buffer, "[I2C] Error: code %d while sending\r\n", err);
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
         return err;
     }
+
+    err = I2C_is_bus_busy();
+    if(err != I2C_OK) {
+        xSemaphoreGive(I2CMutex);
+        sprintf(debug_buffer, "[I2C] Error: code %d while checking bus busy after send\r\n", err);
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+        return err;
+    }
+
+//    err = I2C_is_stop_detected();
+//    if(err != I2C_OK) {
+//        xSemaphoreGive(I2CMutex);
+//        sprintf(debug_buffer, "[I2C] Error: code %d while checking for stop\r\n", err);
+//        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+//        return err;
+//    }
+
+//    i2cClearSCD(I2C_i2c);
 
     i2cSetDirection(I2C_i2c, I2C_RECEIVER);
     i2cSetCount(I2C_i2c, dlength);
     i2cSetMode(I2C_i2c, I2C_MASTER);
+ //   i2cSetStop(I2C_i2c);
+    i2cSetStart(I2C_i2c);
+
     err = _I2C_receive(dlength, data);
     if(err != I2C_OK) {
         xSemaphoreGive(I2CMutex);
+        sprintf(debug_buffer, "[I2C] Error: code %d while receiving\r\n", err);
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
         return err;
     }
+
+    err = I2C_is_bus_busy();
+    if(err != I2C_OK) {
+        xSemaphoreGive(I2CMutex);
+        sprintf(debug_buffer, "[I2C] Error: code %d while checking bus busy after receive\r\n", err);
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+        return err;
+    }
+
+//    err = I2C_is_stop_detected();
+//    if(err != I2C_OK) {
+//        xSemaphoreGive(I2CMutex);
+//        sprintf(debug_buffer, "[I2C] Error: code %d while checking for stop\r\n", err);
+//        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
+//        return err;
+//    }
+
+    i2cSetStop(I2C_i2c);
+    i2cClearSCD(I2C_i2c);
 
     for(i=0; i<dlength; i++){
         sprintf(hex_buffer, "%02x", data[i]);
@@ -173,22 +219,11 @@ int16_t I2C_receive(uint32_t clength,
 
     sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
 
-    if(err != I2C_OK) {
-        xSemaphoreGive(I2CMutex);
-        return err;
-    }
-    i2cSetStop(I2C_i2c);
-    i2cClearSCD(I2C_i2c);
-
-    err = I2C_is_bus_busy();
-    if(err != I2C_OK) {
-        xSemaphoreGive(I2CMutex);
-        return err;
-    }
-
     err = I2C_ok_transmit();
     if(err != I2C_OK) {
         xSemaphoreGive(I2CMutex);
+        sprintf(debug_buffer, "[I2C] Error: code %d while checking ok transmit\r\n", err);
+        sciSafeSend(scilinREG, strlen(debug_buffer), debug_buffer);
         return err;
     }
 
@@ -201,8 +236,10 @@ int16_t _I2C_receive(uint32_t length, uint8_t *data)
     uint32_t timeout = 0;
 
     while(length > 0U){
-        // Wait while receive (I2C_RX_INT) is not ready
-        while(((I2C_i2c->STR & (uint32_t) I2C_RX_INT)
+        // Wait while transmit (I2C_RX_INT) and access
+        // (I2C_ARDY_INT) are not ready
+        while(((I2C_i2c->STR & (uint32_t) I2C_RX_INT
+                        | (uint32_t) I2C_ARDY_INT)
                     == 0U)
                 && timeout < I2C_TIMEOUT_MAX)
         {
@@ -235,6 +272,19 @@ int16_t I2C_is_bus_busy()
     }
     if(timeout >= I2C_TIMEOUT_MAX)
         return I2C_BUSBUSY_FAIL;
+    return I2C_OK;
+}
+
+int16_t I2C_is_stop_detected()
+{
+    uint32_t timeout = 0;
+    while((I2C_i2c->STR & (uint32_t)I2C_SCD_INT) 
+            && timeout < I2C_TIMEOUT_MAX)
+    {
+        timeout++;
+    }
+    if(timeout >= I2C_TIMEOUT_MAX)
+        return I2C_STOPDETECT_FAIL;
     return I2C_OK;
 }
 

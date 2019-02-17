@@ -18,7 +18,7 @@
 #include "os_task.h"
 
 #define I2C_DEFAULT         i2cREG1
-#define I2C_TIMEOUT_MAX     200000
+#define I2C_TIMEOUT_MAX     1000000
 #define I2C_MAX_RESETS      5
 #define I2C_MUTEX_ATTEMPTS  20
 #define I2C_MUTEX_WAIT      100
@@ -27,6 +27,7 @@
 #define I2C_BUSBUSY_FAIL    -30055
 #define I2C_TXREADY_FAIL    -30044
 #define I2C_MUTEX_FAIL      -30033
+#define I2C_STOPDETECT_FAIL -30022
 #define I2C_OK              1
 
 void I2C_init(i2cBASE_t *i2c);
@@ -36,6 +37,7 @@ static int16_t _I2C_send(uint32_t length, uint8_t *data);
 int16_t I2C_receive(uint32_t clength, uint8_t* cmd, uint32_t dlength, uint8_t *data, uint32_t addr);
 static int16_t _I2C_receive(uint32_t length, uint8_t *data);
 int16_t I2C_is_bus_busy();
+int16_t I2C_is_stop_detected();
 int16_t I2C_ok_transmit();
 int16_t I2C_reset();
 
