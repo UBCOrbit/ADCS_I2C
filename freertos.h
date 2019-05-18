@@ -1,5 +1,5 @@
 /*******************************************************
- * i2c_freertos.h
+ * freertos.h
  * 
  * Created on: Mar 10, 2019 
  *  
@@ -13,7 +13,7 @@
  * A client should not send more commands than there is free space in it receive queue.
  * 
  * To work with the command queue, you can follow the example below and update any where in the
- * i2c_freertos.h and i2c_freertos.c files where the key word `>> MODIFY_HERE` is added.
+ * freertos.h and freertos.c files where the key word `>> MODIFY_HERE` is added.
  * 
  * >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
  * 
@@ -86,7 +86,8 @@ extern QueueHandle_t command_queue;
 
 typedef int16_t result_t; // the result of execution of a command passed to the command queue
 
-typedef struct {
+typedef struct
+{
     uint8_t cmd;              // Sent to the slave to select a register/memory
     uint8_t receive_queue_id; // Where the I2C Task sends the result of executing the command
     uint8_t destination;      // The slave address
@@ -97,4 +98,4 @@ typedef struct {
 
 void send_command_to_i2c_worker(command_t command, UBaseType_t priority);
 int16_t init_i2c_command_and_receive_queues(TaskHandle_t worker_task_handle);
-void vI2CWorkerTask(void* pvParameters);
+void vI2CWorkerTask(void *pvParameters);
